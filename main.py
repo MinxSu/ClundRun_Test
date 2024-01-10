@@ -1,13 +1,13 @@
 import os
 import time
-import multiprocessing
+import threading
 import requests
 from requests import RequestException
 from flask import Flask
 from fastapi import Response, status
 
 counter = 0
-counter2 = 0
+
 url = "https://api-server-blg4gtql7a-de.a.run.app/call_start"  # os.environ.get('SERVICE_URL')
 
 print('server startup')
@@ -50,19 +50,20 @@ def call_test_service():
             v = status.HTTP_101_SWITCHING_PROTOCOLS
             res = requests.get(url, timeout=30)
             print(f'current counter: {counter}')
-            while res.content == b'finish':
+            while res.ok:
                 res = requests.get(url, timeout=30)
             counter -= 1
     except RequestException as e:
         print(e)
+        counter -= 1
 
 
 @app.route('/test_async/', methods=['GET'])
 def test_async() -> Response:
     # call call_start
     try:
-        process = multiprocessing.Process(target=test_async_method)
-        process.start()
+        t = threading.Thread(target=test_async_method)
+        t.start()
         return app.response_class(
             response="API return",
             status=202,
@@ -78,10 +79,10 @@ def test_async() -> Response:
 
 
 def test_async_method():
-    global counter2
+    global counter
     while True:
-        counter2 += 1
-        print(f'current counter: {counter2}')
+        counter += 1
+        print(f'current counter: {counter}')
         time.sleep(1)
 
 
